@@ -378,8 +378,3 @@ if status == 0:
             combos.append((greens, reds, result_color))
         [print(g) for g in Counter(combos).most_common()]
     
-    
-    
-    
-    
-    
