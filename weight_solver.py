@@ -9,6 +9,7 @@ MIP optimization for weights and thresholds for the health score
 
 from ortools.linear_solver import pywraplp as lp
 import csv
+from collections import Counter
 
 
 def color_rules(solver, color_vars):
