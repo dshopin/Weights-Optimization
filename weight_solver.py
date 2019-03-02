@@ -328,8 +328,8 @@ if status == 0:
     # percentage of each color for each score
     for k,v in color_vars.items():
         for c,t in v.items():
-            scores = [d.solution_value() for d in t]
-            print('Percent of', c, 'for', k, ':', sum(scores)/len(scores))
+            colors = [d.solution_value() for d in t]
+            print('Percent of', c, 'for', k, ':', sum(colors)/len(colors))
 
     #check color coding
     for k in ['retention', 'ar', 'trend', 'total']:
@@ -356,25 +356,63 @@ if status == 0:
                 yellows.append(score)
             else:
                 errors.append(i)
-        print('Greens: max score=', max(greens), ' min score=', min(greens), ' count=', len(greens))
-        print('Yellows: max score=', max(yellows), ' min score=', min(yellows), ' count=', len(yellows))
-        print('Reds: max score=', max(reds), ' min score=', min(reds), ' count=', len(reds))
+        print('Greens: max score=', max(greens, default = None), ' min score=', min(greens, default = None), ' count=', len(greens))
+        print('Yellows: max score=', max(yellows, default = None), ' min score=', min(yellows, default = None), ' count=', len(yellows))
+        print('Reds: max score=', max(reds, default = None), ' min score=', min(reds, default = None), ' count=', len(reds))
         print('Number of errors=', len(errors))
         
-        # check colors combination rules
-        combos = []
-        for i in range(row_num):
-            greens = 0
-            reds = 0
-            for k in ['retention', 'ar', 'trend']:
-               greens += color_vars[k]['green'][i].solution_value()
-               reds += color_vars[k]['red'][i].solution_value()
-            if color_vars[k]['green'][i].solution_value():
-                result_color = 'Green'
-            elif color_vars[k]['red'][i].solution_value():
-                result_color = 'Red'
-            else:
-                result_color = 'Yellow'
-            combos.append((greens, reds, result_color))
-        [print(g) for g in Counter(combos).most_common()]
+    # check colors combination rules
+    combos = []
+    for i in range(row_num):
+        greens = 0
+        reds = 0
+        for k in ['retention', 'ar', 'trend']:
+           greens += color_vars[k]['green'][i].solution_value()
+           reds += color_vars[k]['red'][i].solution_value()
+        if color_vars['total']['green'][i].solution_value():
+            result_color = 'Green'
+        elif color_vars['total']['red'][i].solution_value():
+            result_color = 'Red'
+        else:
+            result_color = 'Yellow'
+        combos.append((greens, reds, result_color))
+    color_groups = Counter(combos).most_common()
+    for g in color_groups:
+        print(int(g[0][0]), 'Greens +', int(3-(g[0][0]+g[0][1])),
+              'Yellows +', int(g[0][1]),'Reds ==>', g[0][2],':',g[1])
+    
+    
+    
+    
+    
+#    ggr2r = []
+#    for i in range(row_num):
+#        greens = 0
+#        reds = 0
+#        for k in ['retention', 'ar', 'trend']:
+#           greens += color_vars[k]['green'][i].solution_value()
+#           reds += color_vars[k]['red'][i].solution_value()
+#        if greens == 2 and reds == 1:
+#            ggr2r.append(i)
+#    
+#    
+#    for k in ['retention', 'ar', 'trend', 'total']:
+#        for c in ['green', 'red']:
+#            print(k, c, color_vars[k][c][0].solution_value())
+#    
+#    
+#    if color_vars[k][c][0].solution_value():
+#        print(1)
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
