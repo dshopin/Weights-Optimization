@@ -145,8 +145,8 @@ def color_rules(solver, color_vars):
     return(color_logic)
         
 
-
 with open("C:\\Users\\e6on6gv\\Documents\\Print Attrition\\Weights Optimization\\three_scores.csv") as f:
+    counts = []
     scores = {}
     scores['retention'] = []
     scores['ar'] = []
@@ -155,17 +155,18 @@ with open("C:\\Users\\e6on6gv\\Documents\\Print Attrition\\Weights Optimization\
     excluded = 0
     for row in reader:
         try:
-            (float(r) for r in row)
+            (print(float(r)) for r in row)
             scores['retention'].append(float(row[0]))
             scores['ar'].append(float(row[1]))
             scores['trend'].append(float(row[2]))
+            counts.append(int(row[3]))
         except ValueError:
             excluded += 1
             pass
     row_num = reader.line_num- excluded
 
 #target number of greens or reds
-target = 0.2 * row_num
+target = 0.2 * sum(counts)
 
 
 solver = lp.Solver("HealthScore", lp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
@@ -295,10 +296,10 @@ color_logic = color_rules(solver, color_vars)
 target_green_constr = solver.Constraint(0.2 * target, target) 
 target_red_constr = solver.Constraint(0.2 * target, target)            
 for i in range(row_num):
-    target_green_constr.SetCoefficient(color_vars['total']['green'][i], 1)
-    target_red_constr.SetCoefficient(color_vars['total']['red'][i], 1)
-    objective.SetCoefficient(color_vars['total']['green'][i], 1)
-    objective.SetCoefficient(color_vars['total']['red'][i], 1) 
+    target_green_constr.SetCoefficient(color_vars['total']['green'][i], counts[i])
+    target_red_constr.SetCoefficient(color_vars['total']['red'][i], counts[i])
+    objective.SetCoefficient(color_vars['total']['green'][i], counts[i])
+    objective.SetCoefficient(color_vars['total']['red'][i], counts[i]) 
     
 objective.SetMaximization()
 
@@ -328,8 +329,10 @@ if status == 0:
     # percentage of each color for each score
     for k,v in color_vars.items():
         for c,t in v.items():
-            colors = [d.solution_value() for d in t]
-            print('Percent of', c, 'for', k, ':', sum(colors)/len(colors))
+            number = 0
+            for i in range(row_num):
+                number += counts[i] * t[i].solution_value()
+            print('Percent of', c, 'for', k, ':', number/sum(counts))
 
     #check color coding
     for k in ['retention', 'ar', 'trend', 'total']:
@@ -349,11 +352,11 @@ if status == 0:
             else:
                 score = scores[k][i]
             if  isGreen and not isRed:
-                greens.append(score)
+                greens += [score]*counts[i]
             elif not isGreen and isRed:
-                reds.append(score)
+                reds += [score]*counts[i]
             elif not isGreen and not isRed:
-                yellows.append(score)
+                yellows += [score]*counts[i]
             else:
                 errors.append(i)
         print('Greens: max score=', max(greens, default = None), ' min score=', min(greens, default = None), ' count=', len(greens))
@@ -375,7 +378,7 @@ if status == 0:
             result_color = 'Red'
         else:
             result_color = 'Yellow'
-        combos.append((greens, reds, result_color))
+        combos += [(greens, reds, result_color)] * counts[i]
     color_groups = Counter(combos).most_common()
     for g in color_groups:
         print(int(g[0][0]), 'Greens +', int(3-(g[0][0]+g[0][1])),
