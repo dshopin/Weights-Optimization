@@ -230,7 +230,7 @@ for k in ['retention', 'ar', 'trend', 'total']:
 
 epsilon = 0.01
 thresh_constr = {}
-for k in ['retention', 'ar', 'trend']:
+for k in ['retention', 'ar', 'trend', 'total']:
     thresh_constr[k] = {}
     for c in ['green', 'red']:
         thresh_constr[k][c] = []
