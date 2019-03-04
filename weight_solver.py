@@ -319,12 +319,12 @@ if status == 0:
     
     # weights
     for k,v in weight_vars.items():
-        print('Weight for ', k, ':', v.solution_value())
+        print('Weight for ', k, ':', round(v.solution_value(),6))
         
     # thresholds
     for k,v in thresh_vars.items():
         for c,t in v.items():
-            print(c,'threshold for ', k, ':', t.solution_value())
+            print(c,'threshold for ', k, ':', round(t.solution_value(),6))
 
     # percentage of each color for each score
     for k,v in color_vars.items():
@@ -408,14 +408,27 @@ if status == 0:
 #        print(1)
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
+
+### Problem complexity
+total_vars = 0
+total_vars += len([vvv for k,v in color_vars.items() for kk,vv in v.items() for vvv in vv])
+total_vars += len(weight_vars)
+total_vars += len([v for k,v in thresh_vars.items() for vv in v])
+total_vars += len([v for d in color_logic for v in d['deltas']])
+
+total_constr = 0
+total_constr += len(red_lt_green_constr)
+total_constr += len([vvvv for k,v in thresh_constr.items() for kk,vv in v.items() for vvv in vv for vvvv in vvv])
+total_constr += len([v for d in color_logic for v in d['delta_constr']])
+total_constr += 2 #targets
+
+print(total_vars, 'decision variables')
+print(total_constr, 'constraints')
+
+
+
+
+
+
     
