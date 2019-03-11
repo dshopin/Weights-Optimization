@@ -411,20 +411,9 @@ if status == 0:
 
 
 ### Problem complexity
-total_vars = 0
-total_vars += len([vvv for k,v in color_vars.items() for kk,vv in v.items() for vvv in vv])
-total_vars += len(weight_vars)
-total_vars += len([v for k,v in thresh_vars.items() for vv in v])
-total_vars += len([v for d in color_logic for v in d['deltas']])
 
-total_constr = 0
-total_constr += len(red_lt_green_constr)
-total_constr += len([vvvv for k,v in thresh_constr.items() for kk,vv in v.items() for vvv in vv for vvvv in vvv])
-total_constr += len([v for d in color_logic for v in d['delta_constr']])
-total_constr += 2 #targets
-
-print(total_vars, 'decision variables')
-print(total_constr, 'constraints')
+print(solver.NumVariables(), 'decision variables')
+print(solver.NumConstraints(), 'constraints')
 
 
 
