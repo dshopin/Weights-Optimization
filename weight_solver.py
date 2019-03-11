@@ -165,12 +165,9 @@ with open("C:\\Users\\e6on6gv\\Documents\\Print Attrition\\Weights Optimization\
             pass
     row_num = reader.line_num- excluded
 
-#target number of greens or reds
-target = 0.2 * sum(counts)
-
 
 solver = lp.Solver("HealthScore", lp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
-solver.set_time_limit(100000000)
+solver.set_time_limit(1000000)
 objective = solver.Objective()
 
 
@@ -291,17 +288,40 @@ color_logic = color_rules(solver, color_vars)
 
 
       
-# Adding constraints and objective for greens/reds to be below target
-# but as close to it as possible
-target_green_constr = solver.Constraint(0.2 * target, target) 
-target_red_constr = solver.Constraint(0.2 * target, target)            
-for i in range(row_num):
-    target_green_constr.SetCoefficient(color_vars['total']['green'][i], counts[i])
-    target_red_constr.SetCoefficient(color_vars['total']['red'][i], counts[i])
-    objective.SetCoefficient(color_vars['total']['green'][i], counts[i])
-    objective.SetCoefficient(color_vars['total']['red'][i], counts[i]) 
+# Objective function - minimize deviation from the target
+
+#target numbers of greens and reds
+targets = {'retention':{'green':0.2 * sum(counts), 'red':0.2 * sum(counts)},
+           'ar':{'green':0.2 * sum(counts), 'red':0.2 * sum(counts)},
+           'trend':{'green':0.2 * sum(counts), 'red':0.2 * sum(counts)},
+           'total':{'green':0.2 * sum(counts), 'red':0.2 * sum(counts)}
+           }
+
+dev_vars = {}
+dev_constrs = {}
+for k in ['retention', 'ar', 'trend', 'total']:
+    dev_vars[k] = {}
+    dev_constrs[k] = {}
+    for c in ['green', 'red']:
+        u = solver.NumVar(0,solver.infinity(),k+c+'_u')
+        v = solver.NumVar(0,solver.infinity(),k+c+'_v')
+        dev_vars[k][c] = (u, v)
+        
+        constr = solver.Constraint(targets[k][c], targets[k][c])
+        for i in range(row_num):
+            constr.SetCoefficient(color_vars[k][c][i], counts[i])
+        constr.SetCoefficient(u, 1)
+        constr.SetCoefficient(v, -1)
+        dev_constrs[k][c] = constr
+        
+        #lower  penalties for original scores, higher - for total
+        coef = 1
+        if k == 'total':
+            coef = 10
+        objective.SetCoefficient(u, coef)
+        objective.SetCoefficient(v, coef)
     
-objective.SetMaximization()
+objective.SetMinimization()
 
 status = solver.Solve()
 # 0   OPTIMAL,        // optimal.
@@ -315,7 +335,8 @@ status = solver.Solve()
 
 # Solution
 
-if status == 0:
+if status in [0, 1]:
+    print("Status", status)
     
     # weights
     for k,v in weight_vars.items():
@@ -383,29 +404,6 @@ if status == 0:
     for g in color_groups:
         print(int(g[0][0]), 'Greens +', int(3-(g[0][0]+g[0][1])),
               'Yellows +', int(g[0][1]),'Reds ==>', g[0][2],':',g[1])
-    
-    
-    
-    
-    
-#    ggr2r = []
-#    for i in range(row_num):
-#        greens = 0
-#        reds = 0
-#        for k in ['retention', 'ar', 'trend']:
-#           greens += color_vars[k]['green'][i].solution_value()
-#           reds += color_vars[k]['red'][i].solution_value()
-#        if greens == 2 and reds == 1:
-#            ggr2r.append(i)
-#    
-#    
-#    for k in ['retention', 'ar', 'trend', 'total']:
-#        for c in ['green', 'red']:
-#            print(k, c, color_vars[k][c][0].solution_value())
-#    
-#    
-#    if color_vars[k][c][0].solution_value():
-#        print(1)
     
     
 
