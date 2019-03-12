@@ -12,137 +12,69 @@ import csv
 from collections import Counter
 
 
-def color_rules(solver, color_vars):
+def color_rules(solver, variables):
     '''
     Creates constraints, enforcing rules of combining original scores' colors
     into total score colors.
     
     solver - ortools.Solver object
-    color_vars - dict with original scores' color variables
-                    with a structure:
-                    color_vars = {'retention':{'green':[ortools.Variable,...],
-                                               'red':[ortools.Variable,...]},
-                                  'ar':{'green':[ortools.Variable,...],
-                                        'red':[ortools.Variable,...]},
-                                  'trend':{'green':[ortools.Variable,...],
-                                           'red':[ortools.Variable,...]},
-                                  'total':{'green':[ortools.Variable,...],
-                                           'red':[ortools.Variable,...]}}
+    variables - tuple of color variables in order (g1, g2, g3, G, r1, r2, r3, R)
+
     
-    Returns a list with a number of elements equal to the number of customers.
-    Each element is a dict containing:
-        'deltas': list of 12 delta-variables
-        'delta_constr': list of 12 delta-constraints
-        'color_constr': list of 23 color rules' constraints
+    Returns a list of constraints restricting possible colors of Total based on colors of
+    original scores.
     '''
-    
-    def add_delta_constr(delta, idx, color, coef):
-        ''' helper function to add constraint for a specific delta
-            
-            delta - delta variable
-            idx - customer index
-            coef - coefficient for delta
-        '''
-        constr = solver.Constraint(0, 3)
-        for k in ['retention', 'ar', 'trend']:
-            constr.SetCoefficient(color_vars[k][color][idx], 1)
-        constr.SetCoefficient(delta, coef)
-        return(constr)
         
-    def add_color_constr(delta_list, constr_list, idx):
-        ''' helper function to add a color constraint
+    def add_color_rule(variables, coefs, lbs):
+        ''' helper function , returns a list of constraints for a certain rule
             
-            delta_list - list of included deltas
-            constr_list - list of tuples; each tuple is (lower_bound, coef for G, coef for R)
-            idx - customer index
+            variables - list of color variables in order (g1, g2, g3, G, r1, r2, r3, R)
+            coefs - tuple of tuples of coefficients in the same order. Each
+                    nested tuple - one constraint
+            lbs - tuple of numbers, corresponding RHS
+            
+            e. g. "g2 + g3 + r2 + r3 - g1 - G  ≥ -1" entered as:
+                coefs = (-1,1,1,-1,0,1,1,0)
+                lbs = -1
         '''
         constrs = []
-        for c in constr_list:
-            constr = solver.Constraint(c[0], solver.infinity())
-            constr.SetCoefficient(color_vars['total']['green'][idx], c[1])
-            constr.SetCoefficient(color_vars['total']['red'][idx], c[2])
-            for d in delta_list:
-                constr.SetCoefficient(d, 1)
+        for i,lb in enumerate(lbs):
+            constr = solver.Constraint(lb, solver.infinity())
+            for j,v in enumerate(variables):
+                constr.SetCoefficient(v, coefs[i][j])
             constrs.append(constr)
         return(constrs)
         
         
-    row_num = len(color_vars['total']['green'])
-    color_logic = [{}] * row_num
-    for r in range(row_num):
-        # create deltas - indicator variables and their constraints
-        delta = [0] * 12
-        delta_constr = [0] * 12
-        
-        delta[0] = solver.IntVar(0,1,'delta1_' + str(r)) 
-        delta_constr[0] = add_delta_constr(delta[0],r,'green',1)       
-        delta[1] = solver.IntVar(0,1,'delta2_' + str(r)) 
-        delta_constr[1] = add_delta_constr(delta[1],r,'green',2)       
-        delta[2] = solver.IntVar(0,1,'delta3_' + str(r)) 
-        delta_constr[2] = add_delta_constr(delta[2],r,'green',3)       
-        delta[3] = solver.IntVar(0,1,'delta4_' + str(r)) 
-        delta_constr[3] = add_delta_constr(delta[3],r,'green',-1)     
-        delta[4] = solver.IntVar(0,1,'delta5_' + str(r)) 
-        delta_constr[4] = add_delta_constr(delta[4],r,'green',-2)      
-        delta[5] = solver.IntVar(0,1,'delta6_' + str(r)) 
-        delta_constr[5] = add_delta_constr(delta[5],r,'green',-3)    
-        delta[6] = solver.IntVar(0,1,'delta7_' + str(r)) 
-        delta_constr[6] = add_delta_constr(delta[6],r,'red',1)      
-        delta[7] = solver.IntVar(0,1,'delta8_' + str(r)) 
-        delta_constr[7] = add_delta_constr(delta[7],r,'red',2)      
-        delta[8] = solver.IntVar(0,1,'delta9_' + str(r)) 
-        delta_constr[8] = add_delta_constr(delta[8],r,'red',3)      
-        delta[9] = solver.IntVar(0,1,'delta10_' + str(r)) 
-        delta_constr[9] = add_delta_constr(delta[9],r,'red',-1)     
-        delta[10] = solver.IntVar(0,1,'delta11_' + str(r)) 
-        delta_constr[10] = add_delta_constr(delta[10],r,'red',-2)      
-        delta[11] = solver.IntVar(0,1,'delta12_' + str(r)) 
-        delta_constr[11] = add_delta_constr(delta[11],r,'red',-3)
-        
-        color_logic[r]['deltas'] = delta
-        color_logic[r]['delta_constr'] = delta_constr
+    constr_list = []
 
-        # create color rules' constraints
-        color_constr = []
-        
-        # Rule 1
-        color_constr += add_color_constr([delta[0]], [(1, 1, 0), (0, 0, -1)], r)
-        
-        # Rule 2
-        color_constr += add_color_constr([delta[1], delta[5], delta[9]], [(1, 1, 0), (0, 0, -1)], r)
-       
-        # Rule 3
-        color_constr += add_color_constr([delta[2], delta[4], delta[9]], [(0, -1, 0), (0, 0, -1)], r)
-        
-        # Rule 4
-        color_constr += add_color_constr([delta[3], delta[9]], [(0, -1, 0), (0, 0, -1)], r)
-        
-        # Rule 5
-        color_constr += add_color_constr([delta[1], delta[5], delta[8], delta[10]],
-                                         [(0, 1, -1), (-1, -1, -1), (0, 0, -1)], r)
-        
-        # Rule 6
-        color_constr += add_color_constr([delta[2], delta[4], delta[8], delta[10]],
-                                         [(0, -1, 0), (0, -1, 1), (-1, -1, -1)], r)
-        
-        # Rule 7
-        color_constr += add_color_constr([delta[2], delta[4], delta[7], delta[11]],
-                                         [(0, -1, 0), (0, -1, 1), (-1, -1, -1)], r)
-        
-        # Rule 8
-        color_constr += add_color_constr([delta[3], delta[8], delta[10]],
-                                         [(0, -1, 0), (0, 0, -1)], r)
-        
-        # Rule 9
-        color_constr += add_color_constr([delta[3], delta[7], delta[11]],
-                                         [(0, -1, 0), (1, 0, 1)], r)
-        
-        # Rule 10
-        color_constr += add_color_constr([delta[6]],[(0, -1, 0), (1, 0, 1)], r)
-        
-        
-        color_logic[r]['color_constr'] = color_constr
-    return(color_logic)
+    # Rules
+    lhs = [((-1,-1,-1,1,0,0,0,0),),
+           ((-1,-1,1,1,0,0,1,0),(-1,1,-1,1,0,1,0,0),(1,-1,-1,1,1,0,0,0)),
+           ((-1,1,1,-1,0,1,1,0),(-1,1,1,0,0,1,1,-1),(1,-1,1,-1,1,0,1,0),(1,-1,1,0,1,0,1,-1),(1,1,-1,-1,1,1,0,0),(1,1,-1,0,1,1,0,-1)),
+           ((1,1,1,-1,1,1,1,0),(1,1,1,0,1,1,1,-1)),
+           ((-1,-1,0,1,0,0,-1,-1),(-1,0,-1,1,0,-1,0,-1),(0,-1,-1,1,-1,0,0,-1)),
+           ((-1,0,1,-1,0,-1,1,1),(0,-1,1,-1,-1,0,1,1),(1,-1,0,-1,1,0,-1,1),(1,0,-1,-1,1,-1,0,1),(-1,1,0,-1,0,1,-1,1),(0,1,-1,-1,-1,1,0,1)),
+           ((0,0,-1,-1,-1,-1,0,1),(0,-1,0,-1,-1,0,-1,1),(-1,0,0,-1,0,-1,-1,1)),
+           ((0,1,1,-1,-1,1,1,0),(0,1,1,0,-1,1,1,-1),(1,0,1,-1,1,-1,1,0),(1,0,1,0,1,-1,1,-1),(1,1,0,-1,1,1,-1,0),(1,1,0,0,1,1,-1,-1)),
+           ((0,0,1,0,-1,-1,1,1),(0,1,0,0,-1,1,-1,1),(1,0,0,0,1,-1,-1,1)),
+           ((0,0,0,0,-1,-1,-1,1),)
+            ]
+    rhs = [(-2,),
+           (-1,-1,-1),
+           (-1,-1,-1,-1,-1,-1),
+           (0,0),
+           (-3,-3,-3),
+           (-3,-3,-3,-3,-3,-3),
+           (-3,-3,-3),
+           (-1,-1,-1,-1,-1,-1),
+           (-1,-1,-1),
+           (-2,)
+            ]
+    for rule in range(10):
+        constr_list += add_color_rule(variables, lhs[rule], rhs[rule])
+
+    return(constr_list)
         
 
 with open("C:\\Users\\e6on6gv\\Documents\\Print Attrition\\Weights Optimization\\three_scores.csv") as f:
@@ -167,7 +99,7 @@ with open("C:\\Users\\e6on6gv\\Documents\\Print Attrition\\Weights Optimization\
 
 
 solver = lp.Solver("HealthScore", lp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
-solver.set_time_limit(1000000)
+solver.set_time_limit(35*3600*1000)
 objective = solver.Objective()
 
 
@@ -284,7 +216,13 @@ for k in ['retention', 'ar', 'trend', 'total']:
 
 
 # Constraints with colors' combining logic
-color_logic = color_rules(solver, color_vars)         
+color_logic = []
+for i in range(row_num):
+    variables = []
+    for c in ['green', 'red']:
+        for k in ['retention', 'ar', 'trend', 'total']:
+            variables.append(color_vars[k][c][i])
+    color_logic.append(color_rules(solver, variables))        
 
 
       
