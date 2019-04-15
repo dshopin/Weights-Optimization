@@ -99,7 +99,7 @@ with open("C:\\Users\\e6on6gv\\Documents\\Print Attrition\\Weights Optimization\
 
 
 solver = lp.Solver("HealthScore", lp.Solver.CBC_MIXED_INTEGER_PROGRAMMING)
-solver.set_time_limit(35*3600*1000)
+solver.set_time_limit(10*3600*1000)
 objective = solver.Objective()
 
 
